@@ -1,9 +1,19 @@
-<<<<<<< HEAD
-# movie-collection1
-=======
-# Movies/TV Shows Management Application
 
-A full-stack web application for managing movies and TV shows with a React frontend, Express backend, and MySQL database.
+<h1 align="center"> Favorite Movie Collections</h1>
+
+<p align="center">
+  <strong>Movies / TV Shows Management Application</strong><br>
+  <em>A full-stack web app for managing movies and TV shows efficiently.</em>
+</p>
+
+---
+
+## Overview
+
+**Movie Collection** is a full-stack web application designed to organize, manage, and explore your favorite **movies and TV shows** with ease.  
+Built using a modern tech stack for smooth performance and scalability.
+
+---
 
 ---
 
@@ -228,3 +238,32 @@ Via MySQL:
 - Frontend running on port 5173
 - Can access http://localhost:3000/api/movies
 >>>>>>> ab9902b (Initial commit)
+
+   ---
+## Deployment link:
+https://movie-collectionss.onrender.com/
+   
+   
+## Screenshots:
+Splash page
+<img width="959" height="413" alt="1" src="https://github.com/user-attachments/assets/3d4b054f-7688-4829-af3d-9addd953caf0" />
+
+Login Page:
+<img width="959" height="416" alt="2" src="https://github.com/user-attachments/assets/e5fe5bf1-00e5-4508-ba37-e42ef9f06a92" />
+
+Home page:
+<img width="955" height="414" alt="3" src="https://github.com/user-attachments/assets/f769e2e5-6f04-41dd-9727-6bc3a042980f" />  <img width="959" height="415" alt="4" src="https://github.com/user-attachments/assets/e470bd5b-c658-455f-83ee-a91ae0a89fbb" />
+
+Adding Entry:
+<img width="959" height="416" alt="5" src="https://github.com/user-attachments/assets/184a0d9f-80c7-4ace-a1fb-46a60e32ee20" />  <img width="959" height="416" alt="6" src="https://github.com/user-attachments/assets/bdc4e3b8-9010-4f55-96ce-4e097a387f59" />  <img width="959" height="227" alt="7" src="https://github.com/user-attachments/assets/bbe9aa9c-194c-47aa-ba0f-eacf16f5883e" />
+
+Updating Entry:
+<img width="959" height="415" alt="image" src="https://github.com/user-attachments/assets/5b46a4ff-91dc-4c39-ab74-bf4f12d1876b" />  <img width="959" height="412" alt="image" src="https://github.com/user-attachments/assets/c84a5862-48cb-49fa-aeb1-efbcd35ae67d" />  
+
+
+
+
+
+
+
+
