@@ -27,7 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Save, X } from "lucide-react";
+import { Save } from "lucide-react";
 
 interface MovieFormDialogProps {
   open: boolean;
@@ -83,6 +83,7 @@ export function MovieFormDialog({
         additionalDetails: undefined,
       });
     }
+    form.clearErrors();
   }, [movie, form]);
 
   const selectedType = form.watch("type");
@@ -94,7 +95,17 @@ export function MovieFormDialog({
 
   const handleClose = () => {
     if (!isSubmitting) {
-      form.reset();
+      form.reset({
+        title: "",
+        type: "Movie",
+        director: "",
+        budget: undefined,
+        location: undefined,
+        duration: undefined,
+        year: new Date().getFullYear(),
+        additionalDetails: undefined,
+      });
+      form.clearErrors();
       onOpenChange(false);
     }
   };
@@ -103,232 +114,228 @@ export function MovieFormDialog({
     <Dialog open={open} onOpenChange={(newOpen) => {
       if (!newOpen && !isSubmitting) {
         handleClose();
+        return;
       }
+      onOpenChange(newOpen);
     }}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" data-testid="dialog-movie-form">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-semibold">
-            {movie ? "Edit Entry" : "Add New Entry"}
-          </DialogTitle>
-        </DialogHeader>
+      <DialogContent className="flex h-full max-w-3xl max-h-[90vh] flex-col overflow-hidden p-0" data-testid="dialog-movie-form">
+        <div className="flex h-full flex-1 flex-col min-h-0">
+          <DialogHeader className="px-6 pt-6 pb-4">
+            <DialogTitle className="text-2xl font-semibold">
+              {movie ? "Edit Entry" : "Add New Entry"}
+            </DialogTitle>
+          </DialogHeader>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-            <FormField
-              control={form.control}
-              name="title"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    Title <span className="text-destructive">*</span>
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      placeholder="Enter movie or TV show title"
-                      className="h-12"
-                      data-testid="input-title"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
-                control={form.control}
-                name="type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      Type <span className="text-destructive">*</span>
-                    </FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                      value={field.value}
-                    >
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleSubmit)} className="flex flex-1 min-h-0 flex-col">
+              <div className="flex-1 space-y-6 overflow-y-auto px-6 pb-6">
+                <FormField
+                  control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        Title <span className="text-destructive">*</span>
+                      </FormLabel>
                       <FormControl>
-                        <SelectTrigger className="h-12" data-testid="select-type">
-                          <SelectValue placeholder="Select type" />
-                        </SelectTrigger>
+                        <Input
+                          {...field}
+                          placeholder="Enter movie or TV show title"
+                          className="h-12"
+                          data-testid="input-title"
+                        />
                       </FormControl>
-                      <SelectContent>
-                        <SelectItem value="Movie" data-testid="option-movie">Movie</SelectItem>
-                        <SelectItem value="TV Show" data-testid="option-tvshow">TV Show</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              <FormField
-                control={form.control}
-                name="year"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      Year <span className="text-destructive">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        type="number"
-                        placeholder="2024"
-                        className="h-12 font-mono"
-                        onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : 0)}
-                        data-testid="input-year"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="type"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          Type <span className="text-destructive">*</span>
+                        </FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                          value={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger className="h-12" data-testid="select-type">
+                              <SelectValue placeholder="Select type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="Movie" data-testid="option-movie">Movie</SelectItem>
+                            <SelectItem value="TV Show" data-testid="option-tvshow">TV Show</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-            <FormField
-              control={form.control}
-              name="director"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    Director <span className="text-destructive">*</span>
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      placeholder="Enter director name"
-                      className="h-12"
-                      data-testid="input-director"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                  <FormField
+                    control={form.control}
+                    name="year"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          Year <span className="text-destructive">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            type="number"
+                            placeholder="2024"
+                            className="h-12 font-mono"
+                            onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : 0)}
+                            data-testid="input-year"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
-                control={form.control}
-                name="budget"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Budget (Optional)</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
-                          $
-                        </span>
+                <FormField
+                  control={form.control}
+                  name="director"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        Director <span className="text-destructive">*</span>
+                      </FormLabel>
+                      <FormControl>
                         <Input
                           {...field}
-                          type="number"
-                          step="0.01"
-                          placeholder="0.00"
-                          className="h-12 pl-8 font-mono"
-                          value={field.value || ""}
-                          onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
-                          data-testid="input-budget"
+                          placeholder="Enter director name"
+                          className="h-12"
+                          data-testid="input-director"
                         />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              <FormField
-                control={form.control}
-                name="duration"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      Duration (minutes) {isDurationRequired && <span className="text-destructive">*</span>}
-                      {!isDurationRequired && <span className="text-muted-foreground text-xs">(Optional for TV shows)</span>}
-                    </FormLabel>
-                    <FormControl>
-                      <div className="relative">
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="budget"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Budget (Optional)</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
+                              $
+                            </span>
+                            <Input
+                              {...field}
+                              type="number"
+                              step="0.01"
+                              placeholder="0.00"
+                              className="h-12 pl-8 font-mono"
+                              value={field.value || ""}
+                              onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                              data-testid="input-budget"
+                            />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="duration"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          Duration (minutes) {isDurationRequired && <span className="text-destructive">*</span>}
+                          {!isDurationRequired && <span className="text-muted-foreground text-xs">(Optional for TV shows)</span>}
+                        </FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Input
+                              {...field}
+                              type="number"
+                              placeholder="120"
+                              className="h-12 font-mono"
+                              value={field.value || ""}
+                              onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                              data-testid="input-duration"
+                            />
+                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                              min
+                            </span>
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="location"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Location (Optional)</FormLabel>
+                      <FormControl>
                         <Input
                           {...field}
-                          type="number"
-                          placeholder="120"
-                          className="h-12 font-mono"
                           value={field.value || ""}
-                          onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
-                          data-testid="input-duration"
+                          placeholder="Filming location"
+                          className="h-12"
+                          data-testid="input-location"
                         />
-                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                          min
-                        </span>
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-            <FormField
-              control={form.control}
-              name="location"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Location (Optional)</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      value={field.value || ""}
-                      placeholder="Filming location"
-                      className="h-12"
-                      data-testid="input-location"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="additionalDetails"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Additional Details (Optional)</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      {...field}
-                      value={field.value || ""}
-                      placeholder="Add any additional information about this entry..."
-                      className="min-h-[120px] resize-none"
-                      data-testid="input-additional-details"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <DialogFooter className="border-t pt-6">
-              <div className="flex justify-end gap-4 w-full">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleClose}
-                  disabled={isSubmitting}
-                  data-testid="button-cancel"
-                >
-                  <X className="h-4 w-4 mr-2" />
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={isSubmitting} data-testid="button-submit">
-                  <Save className="h-4 w-4 mr-2" />
-                  {isSubmitting ? "Saving..." : movie ? "Update Entry" : "Add Entry"}
-                </Button>
+                <FormField
+                  control={form.control}
+                  name="additionalDetails"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Additional Details (Optional)</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          {...field}
+                          value={field.value || ""}
+                          placeholder="Add any additional information about this entry..."
+                          className="min-h-[120px] resize-none"
+                          data-testid="input-additional-details"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
-            </DialogFooter>
-          </form>
-        </Form>
+
+              <DialogFooter className="sticky bottom-0 border-t bg-background px-6 py-4 shrink-0">
+                <div className="flex w-full justify-end">
+                  <Button type="submit" disabled={isSubmitting} data-testid="button-submit">
+                    <Save className="h-4 w-4 mr-2" />
+                    {isSubmitting ? "Saving..." : movie ? "Update Entry" : "Add Entry"}
+                  </Button>
+                </div>
+              </DialogFooter>
+            </form>
+          </Form>
+        </div>
       </DialogContent>
     </Dialog>
   );

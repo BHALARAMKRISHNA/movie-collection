@@ -116,7 +116,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const validatedData = updateMovieSchema.parse(req.body);
-      const movie = await storage.updateMovie(id, validatedData);
+      const updated = await storage.updateMovie(id, validatedData);
+      const movie = updated ?? await storage.getMovieById(id);
 
       if (!movie) {
         return res.status(404).json({

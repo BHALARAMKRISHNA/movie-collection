@@ -30,32 +30,8 @@ async function initializeDatabase() {
   } catch (error) {
     connectionError = error instanceof Error ? error : new Error(String(error));
     
-    console.error("\nMySQL Connection Error:");
-    console.error("─".repeat(50));
-    
-    if (connectionError.message.includes('ECONNREFUSED')) {
-      console.error("  Connection refused at 127.0.0.1:3306");
-      console.error("  Make sure MySQL server is running");
-      console.error("  Tip: Start MySQL from MySQL Workbench or command line");
-    } else if (connectionError.message.includes('Access denied')) {
-      console.error("  Access denied - Wrong username or password");
-      console.error("  DATABASE_URL: " + process.env.DATABASE_URL?.replace(/:[^@]*@/, ':****@'));
-      console.error("  Check your password contains: 6193@Bk");
-    } else if (connectionError.message.includes('Unknown database')) {
-      console.error("  Database 'movie_db' does not exist");
-      console.error("  Create it in MySQL Workbench first");
-      console.error("  Right-click Connection → Create Schema → name it 'movie_db'");
-    } else if (connectionError.message.includes('Table') && connectionError.message.includes('doesn')) {
-      console.error("  Required tables not found");
-      console.error("  Run the database-schema.sql file in MySQL Workbench");
-    } else {
-      console.error("  " + connectionError.message);
-    }
-    
-    console.error("─".repeat(50));
-    console.error("\nFalling back to In-Memory storage");
-    console.error("   Data will be lost when the application restarts!\n");
-    
+    console.error("MySQL connection failed: " + connectionError.message);
+    console.error("Falling back to In-Memory storage");
     db = null;
   }
 }

@@ -1,6 +1,6 @@
-import { MongoClient, Db } from "mongodb";
-import type { Collection, ModifyResult, ObjectId, OptionalId } from "mongodb";
 import type { InsertMovie, UpdateMovie, Movie } from "@shared/schema";
+import { MongoStorage, createMongoStorage } from "./storage/mongo";
+import { DatabaseStorage } from "./storage/mysql";
 
 export interface IStorage {
   createMovie(movie: InsertMovie): Promise<Movie>;
@@ -71,246 +71,6 @@ export class MemoryStorage implements IStorage {
   }
 }
 
-type CounterDocument = { _id: string; seq: number };
-type MovieDocument = Movie & { _id?: ObjectId };
-
-export class MongoStorage implements IStorage {
-  private client: MongoClient | null = null;
-  private db: Db | null = null;
-
-  private async getDb(): Promise<Db> {
-    if (!process.env.MONGODB_URI) {
-      throw new Error("MONGODB_URI environment variable is not set");
-    }
-    if (!this.client) {
-      this.client = new MongoClient(process.env.MONGODB_URI);
-      await this.client.connect();
-      this.db = this.client.db(process.env.MONGODB_DB_NAME || "movie_db");
-    }
-    return this.db!;
-  }
-
-  private async getMoviesCollection(): Promise<Collection<MovieDocument>> {
-    const db = await this.getDb();
-    return db.collection<MovieDocument>("movies");
-  }
-
-  private async getCountersCollection(): Promise<Collection<CounterDocument>> {
-    const db = await this.getDb();
-    return db.collection<CounterDocument>("counters");
-  }
-
-  private async getNextId(): Promise<number> {
-    const counters = await this.getCountersCollection();
-    const result = (await counters.findOneAndUpdate(
-      { _id: "movies" },
-      { $inc: { seq: 1 } },
-      { upsert: true, returnDocument: "after" }
-    )) as ModifyResult<CounterDocument> | null;
-    return result?.value?.seq ?? 1;
-  }
-
-  private mapDocument(document: MovieDocument): Movie {
-    const { _id, ...rest } = document;
-    return rest;
-  }
-
-  async verifyConnection(): Promise<void> {
-    const db = await this.getDb();
-    await db.command({ ping: 1 });
-  }
-
-  async upsertMovie(movie: Movie): Promise<void> {
-    const collection = await this.getMoviesCollection();
-    await collection.updateOne({ id: movie.id }, { $set: { ...movie } }, { upsert: true });
-    const counters = await this.getCountersCollection();
-    await counters.updateOne({ _id: "movies" }, { $max: { seq: movie.id } }, { upsert: true });
-  }
-
-  async createMovie(insertMovie: InsertMovie): Promise<Movie> {
-    const collection = await this.getMoviesCollection();
-    const id = await this.getNextId();
-    const now = new Date();
-    const movie: OptionalId<MovieDocument> = {
-      id,
-      title: insertMovie.title,
-      type: insertMovie.type,
-      director: insertMovie.director,
-      budget: insertMovie.budget ?? null,
-      location: insertMovie.location ?? null,
-      duration: insertMovie.duration ?? null,
-      year: insertMovie.year,
-      additionalDetails: insertMovie.additionalDetails ?? null,
-      createdAt: now,
-      updatedAt: now,
-    };
-    await collection.insertOne(movie);
-    return this.mapDocument(movie as MovieDocument);
-  }
-
-  async getMovies(page: number = 1, limit: number = 20): Promise<{ data: Movie[]; total: number }> {
-    const collection = await this.getMoviesCollection();
-    const offset = (page - 1) * limit;
-    const cursor = collection
-      .find()
-      .sort({ createdAt: -1 })
-      .skip(offset)
-      .limit(limit);
-    const [documents, total] = await Promise.all([
-      cursor.toArray(),
-      collection.countDocuments(),
-    ]);
-    return {
-      data: documents.map((doc) => this.mapDocument(doc)),
-      total,
-    };
-  }
-
-  async getMovieById(id: number): Promise<Movie | undefined> {
-    const collection = await this.getMoviesCollection();
-    const document = await collection.findOne({ id });
-    return document ? this.mapDocument(document) : undefined;
-  }
-
-  async updateMovie(id: number, updateData: UpdateMovie): Promise<Movie | undefined> {
-    const collection = await this.getMoviesCollection();
-    const now = new Date();
-    const update: Record<string, unknown> = { ...updateData, updatedAt: now };
-    Object.keys(update).forEach((key) => {
-      if (update[key] === undefined) {
-        delete update[key];
-      }
-    });
-    const result = (await collection.findOneAndUpdate(
-      { id },
-      { $set: update },
-      { returnDocument: "after" }
-    )) as ModifyResult<MovieDocument> | null;
-    const document = result?.value ?? undefined;
-    return document ? this.mapDocument(document) : undefined;
-  }
-
-  async deleteMovie(id: number): Promise<boolean> {
-    const collection = await this.getMoviesCollection();
-    const result = await collection.deleteOne({ id });
-    return result.deletedCount === 1;
-  }
-}
-
-export class DatabaseStorage implements IStorage {
-  private db: any;
-  private connectionError: Error | null = null;
-
-  constructor() {
-    import("./db").then(module => {
-      this.db = module.db;
-      this.connectionError = module.connectionError;
-    });
-  }
-
-  private async getDb() {
-    const { db, connectionError } = await import("./db");
-    
-    if (!db) {
-      const errorMsg = connectionError?.message || "Unknown error";
-      throw new Error(
-        `❌ MySQL database is not connected!\n\n` +
-        `Error: ${errorMsg}\n\n` +
-        `Troubleshooting steps:\n` +
-        `1. Check MySQL server is running\n` +
-        `2. Verify DATABASE_URL format: mysql://user:password@host:port/database\n` +
-        `3. Ensure the database and tables exist (run database-schema.sql)\n` +
-        `4. Check firewall/connection issues`
-      );
-    }
-    return db;
-  }
-
-  async verifyConnection(): Promise<void> {
-    await this.getDb();
-  }
-
-  async createMovie(insertMovie: InsertMovie): Promise<Movie> {
-    const db = await this.getDb();
-    const { movies } = await import("@shared/schema");
-    
-    const result = await db
-      .insert(movies)
-      .values(insertMovie);
-    
-    const insertId = Number(result[0].insertId);
-    const movie = await this.getMovieById(insertId);
-    
-    if (!movie) {
-      throw new Error("Failed to create movie");
-    }
-    
-    return movie;
-  }
-
-  async getMovies(page: number = 1, limit: number = 20): Promise<{ data: Movie[]; total: number }> {
-    const db = await this.getDb();
-    const { movies } = await import("@shared/schema");
-    const { desc, sql } = await import("drizzle-orm");
-    
-    const offset = (page - 1) * limit;
-    
-    const [data, countResult] = await Promise.all([
-      db
-        .select()
-        .from(movies)
-        .orderBy(desc(movies.createdAt))
-        .limit(limit)
-        .offset(offset),
-      db
-        .select({ value: sql<number>`count(*)` })
-        .from(movies)
-    ]);
-
-    return {
-      data,
-      total: Number(countResult[0]?.value ?? 0),
-    };
-  }
-
-  async getMovieById(id: number): Promise<Movie | undefined> {
-    const db = await this.getDb();
-    const { movies } = await import("@shared/schema");
-    const { eq } = await import("drizzle-orm");
-    
-    const [movie] = await db
-      .select()
-      .from(movies)
-      .where(eq(movies.id, id))
-      .limit(1);
-    return movie;
-  }
-
-  async updateMovie(id: number, updateData: UpdateMovie): Promise<Movie | undefined> {
-    const db = await this.getDb();
-    const { movies } = await import("@shared/schema");
-    const { eq } = await import("drizzle-orm");
-    
-    await db
-      .update(movies)
-      .set({ ...updateData, updatedAt: new Date() })
-      .where(eq(movies.id, id));
-    
-    return this.getMovieById(id);
-  }
-
-  async deleteMovie(id: number): Promise<boolean> {
-    const db = await this.getDb();
-    const { movies } = await import("@shared/schema");
-    const { eq } = await import("drizzle-orm");
-    
-    const result = await db
-      .delete(movies)
-      .where(eq(movies.id, id));
-    
-    return Number(result[0].affectedRows) > 0;
-  }
-}
 
 export class CombinedStorage implements IStorage {
   private mysqlAvailable = true;
@@ -406,7 +166,9 @@ export class CombinedStorage implements IStorage {
       try {
         const movie = await this.primary.getMovieById(id);
         this.mysqlAvailable = true;
-        return movie;
+        if (movie) {
+          return movie;
+        }
       } catch (error) {
         this.mysqlAvailable = false;
         this.logError("MySQL fetch failed", error);
@@ -430,8 +192,10 @@ export class CombinedStorage implements IStorage {
       try {
         const movie = await this.primary.updateMovie(id, updateData);
         this.mysqlAvailable = true;
-        await this.syncMovie(movie);
-        return movie;
+        if (movie) {
+          await this.syncMovie(movie);
+          return movie;
+        }
       } catch (error) {
         this.mysqlAvailable = false;
         this.logError("MySQL update failed", error);
@@ -441,7 +205,9 @@ export class CombinedStorage implements IStorage {
       try {
         const movie = await this.replica.updateMovie(id, updateData);
         this.mongoAvailable = true;
-        return movie;
+        if (movie) {
+          return movie;
+        }
       } catch (error) {
         this.mongoAvailable = false;
         this.logError("MongoDB update failed", error);
@@ -534,10 +300,6 @@ function initializeStorage(): IStorage {
   
   console.log("Using In-Memory storage");
   return new MemoryStorage();
-}
-
-function createMongoStorage(): MongoStorage {
-  return new MongoStorage();
 }
 
 const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));

@@ -38,6 +38,16 @@ export default function Home() {
   const [editingMovie, setEditingMovie] = useState<Movie | undefined>();
   const [deletingMovie, setDeletingMovie] = useState<Movie | null>(null);
 
+  const normalizeMovie = (movie: Movie): Movie => ({
+    ...movie,
+    id: Number(movie.id ?? 0),
+    budget: movie.budget == null ? null : Number(movie.budget),
+    duration: movie.duration == null ? null : Number(movie.duration),
+    year: Number(movie.year),
+    createdAt: movie.createdAt instanceof Date ? movie.createdAt : new Date(movie.createdAt),
+    updatedAt: movie.updatedAt instanceof Date ? movie.updatedAt : new Date(movie.updatedAt),
+  });
+
   const { data, isLoading: isInitialLoading } = useQuery<MoviesResponse>({
     queryKey: ["/api/movies", page],
     queryFn: async () => {
@@ -52,27 +62,40 @@ export default function Home() {
   });
 
   useEffect(() => {
-    if (data?.data) {
-      setAllMovies((prev) => {
-        const existingIds = new Set(prev.map((m) => m.id));
-        const newMovies = data.data.filter((m) => !existingIds.has(m.id));
-        if (newMovies.length > 0) {
-          return [...prev, ...newMovies];
-        }
-        return prev;
-      });
+    if (!data?.data) {
+      return;
     }
-  }, [data]);
+
+    const normalized = data.data.map(normalizeMovie);
+
+    if (page === 1) {
+      setAllMovies(normalized);
+      return;
+    }
+
+    setAllMovies((prev) => {
+      const existingIds = new Set(prev.map((m) => m.id));
+      const newMovies = normalized.filter((m) => !existingIds.has(m.id));
+      if (newMovies.length > 0) {
+        return [...prev, ...newMovies];
+      }
+      return prev;
+    });
+  }, [data, page]);
 
   const createMutation = useMutation({
     mutationFn: async (newMovie: InsertMovie) => {
       const res = await apiRequest("POST", "/api/movies", newMovie);
-      return await res.json() as Movie;
+      return normalizeMovie(await res.json() as Movie);
     },
     onSuccess: (newMovie) => {
       queryClient.invalidateQueries({ queryKey: ["/api/movies"] });
       setAllMovies([]);
       setPage(1);
+      setSearchTerm("");
+      setSortField(null);
+      setSortDirection("asc");
+      setTypeFilter("all");
       toast({
         title: "Entry added",
         description: `Successfully added "${newMovie.title}"`,
@@ -92,12 +115,16 @@ export default function Home() {
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: InsertMovie }) => {
       const res = await apiRequest("PUT", `/api/movies/${id}`, data);
-      return await res.json() as Movie;
+      return normalizeMovie(await res.json() as Movie);
     },
     onSuccess: (updatedMovie) => {
       queryClient.invalidateQueries({ queryKey: ["/api/movies"] });
       setAllMovies([]);
       setPage(1);
+      setSearchTerm("");
+      setSortField(null);
+      setSortDirection("asc");
+      setTypeFilter("all");
       toast({
         title: "Entry updated",
         description: `Successfully updated "${updatedMovie.title}"`,
@@ -118,10 +145,17 @@ export default function Home() {
     mutationFn: async (id: number) => {
       await apiRequest("DELETE", `/api/movies/${id}`);
     },
-    onSuccess: () => {
+    onSuccess: (_, id) => {
+      const normalizedId = Number(id);
+      setAllMovies((prev) => prev.filter((movie) => movie.id !== normalizedId));
       queryClient.invalidateQueries({ queryKey: ["/api/movies"] });
-      setAllMovies([]);
-      setPage(1);
+      if (page !== 1) {
+        setPage(1);
+      }
+      setSearchTerm("");
+      setSortField(null);
+      setSortDirection("asc");
+      setTypeFilter("all");
       toast({
         title: "Entry deleted",
         description: `Successfully deleted "${deletingMovie?.title}"`,
@@ -216,7 +250,7 @@ export default function Home() {
   };
 
   const handleEdit = (movie: Movie) => {
-    setEditingMovie(movie);
+    setEditingMovie(normalizeMovie(movie));
     setIsFormOpen(true);
   };
 
@@ -235,7 +269,7 @@ export default function Home() {
 
   const handleConfirmDelete = async () => {
     if (!deletingMovie) return;
-    deleteMutation.mutate(deletingMovie.id);
+    deleteMutation.mutate(Number(deletingMovie.id));
   };
 
   const handleLoadMore = () => {
