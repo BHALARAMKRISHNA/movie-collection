@@ -579,22 +579,27 @@ async function finalizeStorage() {
         console.error("MongoDB health check failed", message);
       }
 
+      if (!mysqlStatus.ok && mongoStatus.ok) {
+        console.log("MySQL unavailable, running with MongoDB fallback\n");
+        storage = combined.replica;
+        return;
+      }
+
       if (mysqlStatus.ok && mongoStatus.ok) {
         console.log("Running MySQL primary with MongoDB replica\n");
-      } else if (mysqlStatus.ok) {
+        return;
+      }
+
+      if (mysqlStatus.ok) {
         console.log("MongoDB unavailable, running with MySQL only\n");
-      } else if (mongoStatus.ok) {
-        console.log("MySQL unavailable, running with MongoDB fallback\n");
-      } else {
-        storage.setPrimaryAvailability(false);
-        storage.setReplicaAvailability(false);
-        console.log("All databases unavailable\n");
-      }
-
-      if (!mysqlStatus.ok || !mongoStatus.ok) {
         setTimeout(finalizeStorage, 2000);
+        return;
       }
 
+      combined.setPrimaryAvailability(false);
+      combined.setReplicaAvailability(false);
+      console.log("All databases unavailable\n");
+      setTimeout(finalizeStorage, 2000);
       return;
     }
 
